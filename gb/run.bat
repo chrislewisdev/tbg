@@ -1,0 +1,1 @@
+bgb64 -watch build/room-demo.gb
