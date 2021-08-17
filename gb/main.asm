@@ -10,10 +10,16 @@ SECTION "Entrypoint", ROM0[$0100]
   nop
   jp Startup
 
+SECTION "Gameboy Colour Support", ROM0[$0143]
+  DB CART_COMPATIBLE_DMG_GBC
+
 SECTION "Graphics data", ROM0
 SpriteData:
 INCBIN "man.2bpp"
 EndSpriteData:
+GbcPaletteData:
+INCBIN "gbc.pal"
+EndGbcPaletteData:
 
 SECTION "Game code", ROM0[$0150]
 Startup:
@@ -23,7 +29,8 @@ Startup:
   call ClearGraphicsData
   call LoadSprites
   call InitialiseSprite
-  call InitialisePalettes
+  call InitialiseMonochromePalettes
+  call InitialiseColourPalettes
   call EnableLcd
 GameLoop:
   nop
@@ -109,9 +116,25 @@ InitialiseSprite::
   ld [_OAMRAM+2], a
   ret
 
-InitialisePalettes:
+InitialiseMonochromePalettes:
   ld a, %11100100
   ld [rOBP0], a
   ld [rOBP1], a
   ld [rBGP], a
+  ret
+
+; todo: better understand how this actually works
+InitialiseColourPalettes::
+  ld a, %10000000
+  ld [rOCPS], a
+  ld de, GbcPaletteData
+  ld bc, EndGbcPaletteData - GbcPaletteData
+  .untilAllDataIsCopied
+    ld a, [de]
+    ld [rOCPD], a
+    inc de
+    dec bc
+    ld a, b
+    or c
+  jr nz, .untilAllDataIsCopied
   ret
