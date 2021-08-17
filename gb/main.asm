@@ -23,20 +23,13 @@ Startup:
   call ClearGraphicsData
   call LoadSprites
   call InitialiseSprite
-  ; Initialise palettes
-  ld a, %11100100
-  ld [rOBP0], a
-  ld [rOBP1], a
-  ld [rBGP], a
-  ; Turn display back on
-  ld a, LCDCF_ON|LCDCF_BG8000|LCDCF_BG9800|LCDCF_BGON|LCDCF_OBJ8|LCDCF_OBJON
-  ld [rLCDC], a
+  call InitialisePalettes
+  call EnableLcd
 GameLoop:
   nop
   jp GameLoop
 
 SECTION "Functions", ROM0
-
 WaitForNextVerticalBlank::
 .untilVerticalBlank
   ld a, [rLY]
@@ -76,6 +69,11 @@ DisableLcd::
   ld [rLCDC], a
   ret
 
+EnableLcd::
+  ld a, LCDCF_ON|LCDCF_BG8000|LCDCF_BG9800|LCDCF_BGON|LCDCF_OBJ8|LCDCF_OBJON
+  ld [rLCDC], a
+  ret
+
 ClearGraphicsData::
   ; Tile memory
   ld hl, _VRAM
@@ -109,4 +107,11 @@ InitialiseSprite::
   ld [_OAMRAM+1], a
   ld a, 1
   ld [_OAMRAM+2], a
+  ret
+
+InitialisePalettes:
+  ld a, %11100100
+  ld [rOBP0], a
+  ld [rOBP1], a
+  ld [rBGP], a
   ret
