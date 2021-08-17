@@ -7,3 +7,9 @@ Generate the `man.2bpp` file used in the `gb` demo using:
 ```
 rgbgfx -o man.2bpp man-gb.png
 ```
+
+Generate the `gbc.pal` file using:
+
+```
+rgbgfx -p gbc.pal gb-gbc-pal.png
+```
