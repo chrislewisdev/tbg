@@ -15,10 +15,10 @@ SECTION "Gameboy Colour Support", ROM0[$0143]
 
 SECTION "Graphics data", ROM0
 SpriteData:
-INCBIN "man.2bpp"
+INCBIN "gen/sprite.2bpp"
 EndSpriteData:
 GbcPaletteData:
-INCBIN "gbc.pal"
+INCBIN "gen/sprite.pal"
 EndGbcPaletteData:
 
 SECTION "Game code", ROM0[$0150]
