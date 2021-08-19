@@ -23,7 +23,6 @@ EndGbcPaletteData:
 
 SECTION "Game code", ROM0[$0150]
 Startup:
-  ; Clear graphics state
   call WaitForNextVerticalBlank
   call DisableLcd
   call ClearGraphicsData
@@ -124,6 +123,7 @@ InitialiseMonochromePalettes:
   ret
 
 ; todo: better understand how this actually works
+; todo: only do this on actual Colour hardware
 InitialiseColourPalettes::
   ld a, %10000000
   ld [rOCPS], a
