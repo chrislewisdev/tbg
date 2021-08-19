@@ -1,0 +1,1 @@
+bgb64 -set SystemMode=1 -watch build/room-demo.gb

@@ -14,19 +14,29 @@ SECTION "Gameboy Colour Support", ROM0[$0143]
   DB CART_COMPATIBLE_DMG_GBC
 
 SECTION "Graphics data", ROM0
+TileData:
+INCBIN "gen/tiles.2bpp"
+EndTileData:
 SpriteData:
 INCBIN "gen/sprite.2bpp"
 EndSpriteData:
-GbcPaletteData:
+MapData:
+INCBIN "gen/room.tilemap"
+EndMapData:
+SpritesColourPaletteData:
 INCBIN "gen/sprite.pal"
-EndGbcPaletteData:
+EndSpritesColourPaletteData:
+TileColourPaletteData:
+INCBIN "gen/tiles.pal"
+EndTileColourPaletteData:
 
 SECTION "Game code", ROM0[$0150]
 Startup:
   call WaitForNextVerticalBlank
   call DisableLcd
   call ClearGraphicsData
-  call LoadSprites
+  call LoadGfx
+  call InitialiseRoom
   call InitialiseSprite
   call InitialiseMonochromePalettes
   call InitialiseColourPalettes
@@ -99,11 +109,24 @@ ClearGraphicsData::
   ld [rSCY], a
   ret
 
-LoadSprites::
-  ld hl, _VRAM + 16 ; leave the first tile empty
-  ld de, SpriteData
-  ld bc, EndSpriteData - SpriteData
+LoadGfx::
+  ld hl, _VRAM
+  ld de, TileData
+  ld bc, EndSpriteData - TileData
   call CopyMemory
+  ret
+
+InitialiseRoom::
+ROW = 0
+; the room width does not match the gameboy's tilemap width
+; so we can't just copy it over wholesale
+REPT 18 ; the room is 18 tiles high
+  ld hl, _SCRN0 + ROW * 32  ; native tilemap is 32 tiles wide
+  ld de, MapData + ROW * 20 ; our room is 20 tiles wide
+  ld bc, 20
+  call CopyMemory
+ROW = ROW + 1
+ENDR
   ret
 
 InitialiseSprite::
@@ -111,7 +134,7 @@ InitialiseSprite::
   ld [_OAMRAM], a
   ld a, 80
   ld [_OAMRAM+1], a
-  ld a, 1
+  ld a, 3
   ld [_OAMRAM+2], a
   ret
 
@@ -122,19 +145,24 @@ InitialiseMonochromePalettes:
   ld [rBGP], a
   ret
 
-; todo: better understand how this actually works
 ; todo: only do this on actual Colour hardware
 InitialiseColourPalettes::
+  ; Tile palette
+  ld a, %10000000
+  ld [rBCPS], a
+BYTE_COUNTER = 0
+REPT EndTileColourPaletteData - TileColourPaletteData
+  ld a, [TileColourPaletteData + BYTE_COUNTER]
+  ld [rBCPD], a
+BYTE_COUNTER = BYTE_COUNTER + 1
+ENDR
+  ; Sprite palette
   ld a, %10000000
   ld [rOCPS], a
-  ld de, GbcPaletteData
-  ld bc, EndGbcPaletteData - GbcPaletteData
-  .untilAllDataIsCopied
-    ld a, [de]
-    ld [rOCPD], a
-    inc de
-    dec bc
-    ld a, b
-    or c
-  jr nz, .untilAllDataIsCopied
+BYTE_COUNTER = 0
+REPT EndSpritesColourPaletteData - SpritesColourPaletteData
+  ld a, [SpritesColourPaletteData + BYTE_COUNTER]
+  ld [rOCPD], a
+BYTE_COUNTER = BYTE_COUNTER + 1
+ENDR
   ret
