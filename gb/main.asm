@@ -30,8 +30,12 @@ TileColourPaletteData:
 INCBIN "gen/tiles.pal"
 EndTileColourPaletteData:
 
+SECTION "Variables", WRAM0
+isGbc:: db
+
 SECTION "Game code", ROM0[$0150]
 Startup:
+  call CheckForGbc
   call WaitForNextVerticalBlank
   call DisableLcd
   call ClearGraphicsData
@@ -145,8 +149,11 @@ InitialiseMonochromePalettes:
   ld [rBGP], a
   ret
 
-; todo: only do this on actual Colour hardware
 InitialiseColourPalettes::
+  ; only do this on actual GBC hardware
+  ld a, [isGbc]
+  cp 1
+  ret nz
   ; Tile palette
   ld a, %10000000
   ld [rBCPS], a
@@ -166,3 +173,16 @@ REPT EndSpritesColourPaletteData - SpritesColourPaletteData
 BYTE_COUNTER = BYTE_COUNTER + 1
 ENDR
   ret
+
+; only works when run IMMEDIATELY on startup
+CheckForGbc::
+  cp $11
+  jr nz, .isNotGbc
+  .isGbc
+    ld a, 1
+    ld [isGbc], a
+    ret
+  .isNotGbc
+    ld a, 0
+    ld [isGbc], a
+    ret
