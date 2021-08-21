@@ -46,8 +46,7 @@ Startup:
   call InitialiseColourPalettes
   call EnableLcd
 GameLoop:
-  nop
-  jp GameLoop
+  halt
 
 SECTION "Functions", ROM0
 WaitForNextVerticalBlank::
