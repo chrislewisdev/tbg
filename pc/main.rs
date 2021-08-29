@@ -14,6 +14,13 @@ struct Resources {
     player_sprite: Texture2D,
 }
 
+struct InputState {
+    is_left_pressed: bool,
+    is_right_pressed: bool,
+    is_up_pressed: bool,
+    is_down_pressed: bool,
+}
+
 trait Unit {
     fn get_x(&self) -> i32;
     fn set_x(&mut self, x: i32);
@@ -24,7 +31,7 @@ trait Unit {
 struct Player {
     x: i32,
     y: i32,
-    get_cmd: fn (&RaylibHandle) -> Option<Cmd>,
+    get_cmd: fn (&InputState) -> Option<Cmd>,
 }
 
 impl Unit for Player {
@@ -38,39 +45,43 @@ struct GlobalState {
     player: Player,
 }
 
-type Cmd = fn (&mut dyn Unit);
+type Cmd = fn (&mut dyn Unit) -> bool;
 
-fn cmd_move_left(unit: &mut dyn Unit) {
+fn cmd_move_left(unit: &mut dyn Unit) -> bool {
     unit.set_x(unit.get_x() - 1);
+    return true;
 }
-fn cmd_move_right(unit: &mut dyn Unit) {
+fn cmd_move_right(unit: &mut dyn Unit) -> bool {
     unit.set_x(unit.get_x() + 1);
+    return true;
 }
-fn cmd_move_up(unit: &mut dyn Unit) {
+fn cmd_move_up(unit: &mut dyn Unit) -> bool {
     unit.set_y(unit.get_y() - 1);
+    return true;
 }
-fn cmd_move_down(unit: &mut dyn Unit) {
+fn cmd_move_down(unit: &mut dyn Unit) -> bool {
     unit.set_y(unit.get_y() + 1);
+    return true;
 }
 
-fn player_control(rl: &RaylibHandle) -> Option<Cmd> {
-    if rl.is_key_down(KeyboardKey::KEY_LEFT) {
+fn player_control(input_state: &InputState) -> Option<Cmd> {
+    if input_state.is_left_pressed {
         return Some(cmd_move_left);
-    } else if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+    } else if input_state.is_right_pressed {
         return Some(cmd_move_right);
-    } else if rl.is_key_down(KeyboardKey::KEY_UP) {
+    } else if input_state.is_up_pressed {
         return Some(cmd_move_up);
-    } else if rl.is_key_down(KeyboardKey::KEY_DOWN) {
+    } else if input_state.is_down_pressed {
         return Some(cmd_move_down);
     }
 
     return None;
 }
 
-fn update_game(rl: &RaylibHandle, global_state: &mut GlobalState) {
+fn update_game(global_state: &mut GlobalState, input_state: &InputState) {
     let get_cmd = global_state.player.get_cmd;
 
-    if let Some(cmd) = get_cmd(rl) {
+    if let Some(cmd) = get_cmd(input_state) {
         cmd(&mut global_state.player);
     }
 }
@@ -105,7 +116,14 @@ fn main() {
     let mut global_state = GlobalState { player: Player { x: 3, y: 3, get_cmd: player_control } };
 
     while !rl.window_should_close() {
-        update_game(&rl, &mut global_state);
+        let input_state = InputState {
+            is_left_pressed: rl.is_key_down(KeyboardKey::KEY_LEFT),
+            is_right_pressed: rl.is_key_down(KeyboardKey::KEY_RIGHT),
+            is_up_pressed: rl.is_key_down(KeyboardKey::KEY_UP),
+            is_down_pressed: rl.is_key_down(KeyboardKey::KEY_DOWN),
+        };
+
+        update_game(&mut global_state, &input_state);
         draw_game(&mut rl, &thread, &resources, &global_state);
     }
 }
