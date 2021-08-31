@@ -1,3 +1,6 @@
+mod point;
+
+use point::Point;
 use raylib::prelude::*;
 
 const TILE_SIZE: i32 = 8;
