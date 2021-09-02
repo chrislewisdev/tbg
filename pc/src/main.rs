@@ -31,7 +31,7 @@ trait Unit {
 
 struct Player {
     cell: Point,
-    get_cmd: fn (&InputState) -> Option<Cmd>,
+    get_cmd: fn (&InputState) -> Option<Box<dyn Cmd>>,
 }
 
 impl Unit for Player {
@@ -43,44 +43,44 @@ struct GlobalState {
     player: Player,
 }
 
-type Cmd = fn (&mut dyn Unit) -> bool;
-
-fn cmd_move_left(unit: &mut dyn Unit) -> bool {
-    unit.move_cells(point::LEFT);
-    return true;
-}
-fn cmd_move_right(unit: &mut dyn Unit) -> bool {
-    unit.move_cells(point::RIGHT);
-    return true;
-}
-fn cmd_move_up(unit: &mut dyn Unit) -> bool {
-    unit.move_cells(point::UP);
-    return true;
-}
-fn cmd_move_down(unit: &mut dyn Unit) -> bool {
-    unit.move_cells(point::DOWN);
-    return true;
+trait Cmd {
+    fn action(&mut self, unit: &mut dyn Unit);
+    fn is_done(&self, unit: &dyn Unit) -> bool;
 }
 
-fn player_control(input_state: &InputState) -> Option<Cmd> {
+struct MoveCmd {
+    cells: Point,
+}
+
+impl Cmd for MoveCmd {
+    fn action(&mut self, unit: &mut dyn Unit) {
+        unit.move_cells(self.cells);
+    }
+    fn is_done(&self, _unit: &dyn Unit) -> bool {
+        return true;
+    }
+}
+
+fn player_control(input_state: &InputState) -> Option<Box<dyn Cmd>> {
     if input_state.is_left_pressed {
-        return Some(cmd_move_left);
+        return Some(Box::new(MoveCmd { cells: point::LEFT }));
     } else if input_state.is_right_pressed {
-        return Some(cmd_move_right);
+        return Some(Box::new(MoveCmd { cells: point::RIGHT }));
     } else if input_state.is_up_pressed {
-        return Some(cmd_move_up);
+        return Some(Box::new(MoveCmd { cells: point::UP }));
     } else if input_state.is_down_pressed {
-        return Some(cmd_move_down);
+        return Some(Box::new(MoveCmd { cells: point::DOWN }));
     }
 
     return None;
 }
 
+// TODO: Rename to 'explore' state and add an ExploreState struct
 fn update_game(global_state: &mut GlobalState, input_state: &InputState) {
     let get_cmd = global_state.player.get_cmd;
 
-    if let Some(cmd) = get_cmd(input_state) {
-        cmd(&mut global_state.player);
+    if let Some(mut cmd) = get_cmd(input_state) {
+        cmd.action(&mut global_state.player);
     }
 }
 
