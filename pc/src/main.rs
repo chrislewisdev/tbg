@@ -25,23 +25,18 @@ struct InputState {
 }
 
 trait Unit {
-    fn get_x(&self) -> i32;
-    fn set_x(&mut self, x: i32);
-    fn get_y(&self) -> i32;
-    fn set_y(&mut self, y: i32);
+    fn get_cell(&self) -> Point;
+    fn move_cells(&mut self, cells: Point);
 }
 
 struct Player {
-    x: i32,
-    y: i32,
+    cell: Point,
     get_cmd: fn (&InputState) -> Option<Cmd>,
 }
 
 impl Unit for Player {
-    fn get_x(&self) -> i32 { self.x }
-    fn set_x(&mut self, x: i32) { self.x = x }
-    fn get_y(&self) -> i32 { self.y }
-    fn set_y(&mut self, y: i32) { self.y = y}
+    fn get_cell(&self) -> Point { self.cell }
+    fn move_cells(&mut self, cells: Point) { self.cell = self.cell + cells }
 }
 
 struct GlobalState {
@@ -51,19 +46,19 @@ struct GlobalState {
 type Cmd = fn (&mut dyn Unit) -> bool;
 
 fn cmd_move_left(unit: &mut dyn Unit) -> bool {
-    unit.set_x(unit.get_x() - 1);
+    unit.move_cells(point::LEFT);
     return true;
 }
 fn cmd_move_right(unit: &mut dyn Unit) -> bool {
-    unit.set_x(unit.get_x() + 1);
+    unit.move_cells(point::RIGHT);
     return true;
 }
 fn cmd_move_up(unit: &mut dyn Unit) -> bool {
-    unit.set_y(unit.get_y() - 1);
+    unit.move_cells(point::UP);
     return true;
 }
 fn cmd_move_down(unit: &mut dyn Unit) -> bool {
-    unit.set_y(unit.get_y() + 1);
+    unit.move_cells(point::DOWN);
     return true;
 }
 
@@ -95,8 +90,8 @@ fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, resources: &Resources
     screen.clear_background(Color::BLACK);
     screen.draw_texture_ex(&resources.room, Vector2::new(0.0, 0.0), 0.0, SCALE_FACTOR as f32, Color::WHITE);
 
-    let x = global_state.player.x * TILE_SIZE * SCALE_FACTOR;
-    let y = global_state.player.y * TILE_SIZE * SCALE_FACTOR;
+    let x = global_state.player.cell.x * TILE_SIZE * SCALE_FACTOR;
+    let y = global_state.player.cell.y * TILE_SIZE * SCALE_FACTOR;
     screen.draw_texture_ex(&resources.player_sprite, Vector2::new(x as f32, y as f32), 0.0, SCALE_FACTOR as f32, Color::WHITE);
 }
 
@@ -116,7 +111,7 @@ fn main() {
     let sprite = rl.load_texture(&thread, "sprite.png").expect("Failed to load sprite.png");
     let resources = Resources { room: room, player_sprite: sprite };
 
-    let mut global_state = GlobalState { player: Player { x: 3, y: 3, get_cmd: player_control } };
+    let mut global_state = GlobalState { player: Player { cell: Point { x: 3, y: 3 }, get_cmd: player_control } };
 
     while !rl.window_should_close() {
         let input_state = InputState {
