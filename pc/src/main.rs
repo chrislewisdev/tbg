@@ -101,21 +101,17 @@ struct ExploreState {
 
 impl ProgramState for ExploreState {
     fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState) {
+        // Get a new cmd if we have none or the current is done.
+        if self.cmd.as_ref().map_or(true, |cmd| cmd.is_done(&global_state.player)) {
+            let get_cmd = global_state.player.get_cmd;
+            self.cmd = get_cmd(&global_state.player, input_state);
+        }
+
         match &mut self.cmd {
             Some(cmd) => {
-                if !cmd.is_done(&mut global_state.player) {
-                    cmd.action(&mut global_state.player)
-                }
-
-                if cmd.is_done(&mut global_state.player) {
-                    self.cmd = None
-                }
-            },
-            None => {
-                let get_cmd = global_state.player.get_cmd;
-
-                self.cmd = get_cmd(&global_state.player, input_state);
+                cmd.action(&mut global_state.player);
             }
+            _ => {}
         }
     }
     
