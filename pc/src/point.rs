@@ -27,4 +27,10 @@ impl ops::Sub<Point> for Point {
     }
 }
 
-// TODO: Add point multiplication
+impl ops::Mul<i32> for Point {
+    type Output = Point;
+
+    fn mul(self, rhs: i32) -> Point {
+        Point { x: self.x * rhs, y: self.y * rhs }
+    }
+}
