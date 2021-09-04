@@ -58,7 +58,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "room-demo"
+name = "tbg"
 version = "0.1.0"
 dependencies = [
  "raylib",

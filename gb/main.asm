@@ -1,7 +1,7 @@
 INCLUDE "hardware.inc"
 
 SECTION "ROM Title", ROM0[$0134]
-  DB "Room Demo"
+  DB "tbg"
 
 SECTION "Nintendo Logo", ROM0[$0104]
   NINTENDO_LOGO

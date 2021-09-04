@@ -1,9 +1,9 @@
 # todo: try to make this more cross-platform friendly
 
-build/room-demo.gb: build/ main.asm gen/sprite.2bpp gen/sprite.pal gen/tiles.2bpp gen/tiles.pal
+build/tbg.gb: build/ main.asm gen/sprite.2bpp gen/sprite.pal gen/tiles.2bpp gen/tiles.pal
 	rgbasm -o build/main.o main.asm
-	rgblink -n build/room-demo.sym -o build/room-demo.gb build/main.o
-	rgbfix -p0 -v build/room-demo.gb
+	rgblink -n build/tbg.sym -o build/tbg.gb build/main.o
+	rgbfix -p0 -v build/tbg.gb
 
 gen/sprite.2bpp: gen/ sprite.png
 	rgbgfx -o gen/sprite.2bpp sprite.png
@@ -24,5 +24,5 @@ gen/:
 	mkdir gen
 
 clean:
-	rmdir /s /q build
-	rmdir /s /q gen
+	rm -rf build
+	rm -rf gen

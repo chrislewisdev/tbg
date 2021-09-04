@@ -130,7 +130,7 @@ impl ProgramState for ExploreState {
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(WINDOW_WIDTH, WINDOW_HEIGHT)
-        .title("Hello, World")
+        .title("tbg")
         .build();
 
     rl.set_target_fps(60);
