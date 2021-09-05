@@ -1,5 +1,6 @@
 mod point;
 
+use std::fs;
 use point::Point;
 use raylib::prelude::*;
 
@@ -44,8 +45,11 @@ impl Unit for Player {
     fn move_pixels(&mut self, pixels: Point) { self.pixel = self.pixel + pixels }
 }
 
+type MapData = Vec<Vec<i32>>;
+
 struct GlobalState {
     player: Player,
+    map: MapData,
 }
 
 trait Cmd {
@@ -76,7 +80,12 @@ impl Cmd for MoveCmd {
     }
 }
 
+fn is_empty(map: &MapData, x: usize, y: usize) -> bool {
+    return map[y][x] == 1;
+}
+
 fn player_control(unit: &dyn Unit, input_state: &InputState) -> Option<Box<dyn Cmd>> {
+    // TODO: Add collision checking
     if input_state.is_left_pressed {
         return Some(Box::new(MoveCmd { target: unit.get_cell() + point::LEFT }));
     } else if input_state.is_right_pressed {
@@ -127,6 +136,19 @@ impl ProgramState for ExploreState {
     }
 }
 
+fn load_map() -> Vec<Vec<i32>> {
+    let mut output: Vec<Vec<i32>> = vec![];
+    let csv = fs::read_to_string("assets/map.csv").expect("Failed to load map.csv");
+    let mut reader = csv::ReaderBuilder::new().has_headers(false).from_reader(csv.as_bytes());
+
+    for result in reader.records() {
+        let row = result.unwrap();
+        output.push(row.iter().map(|s| s.parse::<i32>().unwrap()).collect());
+    }
+
+    return output;
+}
+
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -139,11 +161,20 @@ fn main() {
     let monitor_width = raylib::core::window::get_monitor_width(0);
     rl.set_window_position(monitor_width - WINDOW_WIDTH, 40);
 
-    let room = rl.load_texture(&thread, "room.png").expect("Failed to load room.png");
-    let sprite = rl.load_texture(&thread, "sprite.png").expect("Failed to load sprite.png");
+    let room = rl.load_texture(&thread, "assets/room.png").expect("Failed to load room.png");
+    let sprite = rl.load_texture(&thread, "assets/sprite.png").expect("Failed to load sprite.png");
     let resources = Resources { room: room, player_sprite: sprite };
 
-    let mut global_state = GlobalState { player: Player { cell: Point { x: 3, y: 3 }, pixel: Point { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE }, get_cmd: player_control } };
+    let map = load_map();
+
+    let mut global_state = GlobalState {
+        player: Player {
+            cell: Point { x: 3, y: 3 },
+            pixel: Point { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
+            get_cmd: player_control
+        },
+        map
+    };
 
     let mut explore_state = ExploreState { cmd: None };
 

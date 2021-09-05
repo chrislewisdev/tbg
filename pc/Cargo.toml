@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 raylib = "3.5"
+csv = "1.1"
