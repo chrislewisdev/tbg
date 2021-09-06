@@ -211,12 +211,13 @@ fn main() {
 
     let mut explore_state = ExploreState { cmd: None };
 
+
     while !rl.window_should_close() {
         let input_state = InputState {
-            is_left_pressed: rl.is_key_down(KeyboardKey::KEY_LEFT),
-            is_right_pressed: rl.is_key_down(KeyboardKey::KEY_RIGHT),
-            is_up_pressed: rl.is_key_down(KeyboardKey::KEY_UP),
-            is_down_pressed: rl.is_key_down(KeyboardKey::KEY_DOWN),
+            is_left_pressed: rl.is_key_pressed(KeyboardKey::KEY_LEFT),
+            is_right_pressed: rl.is_key_pressed(KeyboardKey::KEY_RIGHT),
+            is_up_pressed: rl.is_key_pressed(KeyboardKey::KEY_UP),
+            is_down_pressed: rl.is_key_pressed(KeyboardKey::KEY_DOWN),
         };
 
         explore_state.update(&mut global_state, &input_state);
