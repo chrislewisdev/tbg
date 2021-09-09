@@ -13,6 +13,9 @@ const SCREEN_HEIGHT_CELLS: i32 = 11;
 const WINDOW_WIDTH: i32 = SCREEN_WIDTH_CELLS * TILE_SIZE * SCALE_FACTOR;
 const WINDOW_HEIGHT: i32 = SCREEN_HEIGHT_CELLS * TILE_SIZE * SCALE_FACTOR;
 
+type MapData = Vec<Vec<i32>>;
+type Cmd = fn (&mut Unit) -> bool;
+
 struct Resources {
     player_sprite: Texture2D,
     tileset: Texture2D,
@@ -25,78 +28,50 @@ struct InputState {
     is_down_pressed: bool,
 }
 
-trait Unit {
-    fn get_cell(&self) -> Point;
-    fn move_cells(&mut self, cells: Point);
-    fn get_pixel(&self) -> Point;
-    fn move_pixels(&mut self, pixels: Point);
-}
-
-struct Player {
+struct Unit {
     cell: Point,
     pixel: Point,
-    get_cmd: fn (&dyn Unit, &InputState, &GlobalState) -> Option<Box<dyn Cmd>>,
+    get_cmd: fn (&Unit, &InputState, &GlobalState) -> Option<Cmd>,
 }
-
-impl Unit for Player {
-    fn get_cell(&self) -> Point { self.cell }
-    fn move_cells(&mut self, cells: Point) { self.cell = self.cell + cells }
-    fn get_pixel(&self) -> Point { self.pixel }
-    fn move_pixels(&mut self, pixels: Point) { self.pixel = self.pixel + pixels }
-}
-
-type MapData = Vec<Vec<i32>>;
 
 struct GlobalState {
-    player: Player,
+    player: Unit,
     map: MapData,
 }
 
-trait Cmd {
-    fn action(&mut self, unit: &mut dyn Unit);
-    fn is_done(&self, unit: &dyn Unit) -> bool;
-}
-
-struct MoveCmd {
-    target: Point,
-}
-
-impl Cmd for MoveCmd {
-    fn action(&mut self, unit: &mut dyn Unit) {
-        let target_pixel = self.target * TILE_SIZE;
-        let unit_pixel = unit.get_pixel();
-        let move_pixels = Point {
-            x: i32::signum(target_pixel.x - unit_pixel.x) * 2,
-            y: i32::signum(target_pixel.y - unit_pixel.y) * 2,
-        };
-        
-        unit.move_pixels(move_pixels);
-        if unit.get_pixel() == target_pixel {
-            unit.move_cells(self.target - unit.get_cell());
-        }
+fn move_cmd(unit: &mut Unit, delta: Point) -> bool {
+    let target_pixel = (unit.cell + delta) * TILE_SIZE;
+    let move_pixels = Point {
+        x: i32::signum(target_pixel.x - unit.pixel.x) * 2,
+        y: i32::signum(target_pixel.y - unit.pixel.y) * 2,
+    };
+    
+    unit.pixel = unit.pixel + move_pixels;
+    if unit.pixel == target_pixel {
+        unit.cell = unit.cell + delta;
+        return true;
     }
-    fn is_done(&self, unit: &dyn Unit) -> bool {
-        return unit.get_cell() == self.target;
-    }
+
+    return false;
+}
+fn move_left_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::LEFT) }
+fn move_right_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::RIGHT) }
+fn move_up_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::UP) }
+fn move_down_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::DOWN) }
+
+fn is_empty(map: &MapData, x: i32, y: i32) -> bool {
+    return map[y as usize][x as usize] == 1;
 }
 
-fn is_empty(map: &MapData, x: usize, y: usize) -> bool {
-    return map[y][x] == 1;
-}
-
-fn player_control(unit: &dyn Unit, input_state: &InputState, global_state: &GlobalState) -> Option<Box<dyn Cmd>> {
-    let cell = unit.get_cell();
-    let x = cell.x as usize;
-    let y = cell.y as usize;
-
-    if input_state.is_left_pressed && is_empty(&global_state.map, x - 1, y) {
-        return Some(Box::new(MoveCmd { target: unit.get_cell() + point::LEFT }));
-    } else if input_state.is_right_pressed && is_empty(&global_state.map, x + 1, y){
-        return Some(Box::new(MoveCmd { target: unit.get_cell() + point::RIGHT }));
-    } else if input_state.is_up_pressed && is_empty(&global_state.map, x, y - 1) {
-        return Some(Box::new(MoveCmd { target: unit.get_cell() + point::UP }));
-    } else if input_state.is_down_pressed && is_empty(&global_state.map, x, y + 1) {
-        return Some(Box::new(MoveCmd { target: unit.get_cell() + point::DOWN }));
+fn player_control(unit: &Unit, input_state: &InputState, global_state: &GlobalState) -> Option<Cmd> {
+    if input_state.is_left_pressed && is_empty(&global_state.map, unit.cell.x - 1, unit.cell.y) {
+        return Some(move_left_cmd);
+    } else if input_state.is_right_pressed && is_empty(&global_state.map, unit.cell.x + 1, unit.cell.y){
+        return Some(move_right_cmd);
+    } else if input_state.is_up_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y - 1) {
+        return Some(move_up_cmd);
+    } else if input_state.is_down_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y + 1) {
+        return Some(move_down_cmd);
     }
 
     return None;
@@ -104,40 +79,34 @@ fn player_control(unit: &dyn Unit, input_state: &InputState, global_state: &Glob
 
 trait ProgramState {
     fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState);
-    fn draw(&self, rl:&mut RaylibHandle, thread: &RaylibThread, resources: &Resources, global_state: &GlobalState);
+    fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState);
 }
 
 struct ExploreState {
-    cmd: Option<Box<dyn Cmd>>,
+    cmd: Option<Cmd>,
 }
 
 impl ProgramState for ExploreState {
     fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState) {
-        // Get a new cmd if we have none or the current is done.
-        if self.cmd.as_ref().map_or(true, |cmd| cmd.is_done(&global_state.player)) {
+        if self.cmd.is_none() {
             let get_cmd = global_state.player.get_cmd;
             self.cmd = get_cmd(&global_state.player, input_state, global_state);
         }
 
-        match &mut self.cmd {
-            Some(cmd) => {
-                cmd.action(&mut global_state.player);
+        if let Some(cmd) = self.cmd {
+            if cmd(&mut global_state.player) {
+                self.cmd = None
             }
-            _ => {}
         }
     }
     
-    fn draw(&self, rl: &mut RaylibHandle, thread: &RaylibThread, resources: &Resources, global_state: &GlobalState) {
-        let mut screen = rl.begin_drawing(&thread);
-    
+    fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState) {
         screen.clear_background(Color::BLACK);
-        // TODO: Render map data out
-        // screen.draw_texture_ex(&resources.room, Vector2::new(0.0, 0.0), 0.0, SCALE_FACTOR as f32, Color::WHITE);
-        draw_map(&mut screen, &global_state.map, &resources.tileset);
+        draw_map(screen, &global_state.map, &resources.tileset);
 
         let x = global_state.player.pixel.x * SCALE_FACTOR;
         let y = global_state.player.pixel.y * SCALE_FACTOR;
-        screen.draw_texture_ex(&resources.player_sprite, Vector2::new(x as f32, y as f32), 0.0, SCALE_FACTOR as f32, Color::WHITE);
+        screen.draw_texture_ex(&resources.player_sprite, rvec2(x, y), 0.0, SCALE_FACTOR as f32, Color::WHITE);
     }
 }
 
@@ -159,7 +128,18 @@ fn get_tile_rect(tileset: &Texture2D, index: i32) -> Rectangle {
     let x = index % tiles_width;
     let y = index / tiles_width;
 
-    Rectangle { x: (x * TILE_SIZE) as f32, y: (y * TILE_SIZE) as f32, width: TILE_SIZE as f32 , height: TILE_SIZE as f32 }
+    rrect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+}
+
+fn draw_tile(screen: &mut RaylibDrawHandle, tileset: &Texture2D, tile: i32, x: i32, y: i32) {
+    screen.draw_texture_pro(
+        tileset,
+        get_tile_rect(&tileset, tile),
+        rrect(x * TILE_SIZE * SCALE_FACTOR, y * TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR),
+        rvec2(0, 0),
+        0.0,
+        Color::WHITE
+    );
 }
 
 fn draw_map(screen: &mut RaylibDrawHandle, map: &MapData, tileset: &Texture2D) {
@@ -168,14 +148,7 @@ fn draw_map(screen: &mut RaylibDrawHandle, map: &MapData, tileset: &Texture2D) {
     for row in map {
         let mut x = 0;
         for tile in row {
-            screen.draw_texture_pro(
-                tileset,
-                get_tile_rect(&tileset, *tile),
-                Rectangle { x: (x * TILE_SIZE * SCALE_FACTOR) as f32, y: (y * TILE_SIZE * SCALE_FACTOR) as f32, width: (TILE_SIZE * SCALE_FACTOR) as f32, height: (TILE_SIZE * SCALE_FACTOR) as f32 },
-                Vector2 { x: 0.0, y: 0.0 },
-                0.0,
-                Color::WHITE
-            );
+            draw_tile(screen, tileset, *tile, x, y);
             x += 1;
         }
         y += 1;
@@ -201,7 +174,7 @@ fn main() {
     let map = load_map();
 
     let mut global_state = GlobalState {
-        player: Player {
+        player: Unit {
             cell: Point { x: 3, y: 3 },
             pixel: Point { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
             get_cmd: player_control
@@ -210,7 +183,6 @@ fn main() {
     };
 
     let mut explore_state = ExploreState { cmd: None };
-
 
     while !rl.window_should_close() {
         let input_state = InputState {
@@ -221,6 +193,7 @@ fn main() {
         };
 
         explore_state.update(&mut global_state, &input_state);
-        explore_state.draw(&mut rl, &thread, &resources, &global_state);
+        let mut screen = rl.begin_drawing(&thread);
+        explore_state.draw(&mut screen, &resources, &global_state);
     }
 }
