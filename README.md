@@ -1,6 +1,6 @@
 # tbg
 
-A little game development project, and a little blog to go with it.
+A little game development project, and a little blog to go with it. By [Chris Lewis](https://chrislewis.dev).
 
 If you want an introduction to what this is all about, it's probably best to just read the 'Welcome' blog post listed below :) The blog is currently served purely through GitHub Pages, for simplicity.
 
