@@ -37,15 +37,26 @@ EndTileColourPaletteData:
 SECTION "Variables", WRAM0
 isGbc: db
 verticalBlankFlag: db
+input: db
+previousInput: db
 unit:
   .sx db
   .sy db
   .ctrl_hi db
   .ctrl_lo db
 
-SPR0_Y EQU _OAMRAM
-SPR0_X EQU _OAMRAM+1
+SPR0_Y  EQU _OAMRAM
+SPR0_X  EQU _OAMRAM+1
 SPR0_ID EQU _OAMRAM+2
+
+BTN_DOWN      EQU %10000000
+BTN_UP        EQU %01000000
+BTN_LEFT      EQU %00100000
+BTN_RIGHT     EQU %00010000
+BTN_START     EQU %00001000
+BTN_SELECT    EQU %00000100
+BTN_B         EQU %00000010
+BTN_A         EQU %00000001
 
 CallHlFunctionPointer: MACRO
   ld bc, @ + 5
@@ -68,6 +79,7 @@ Startup:
   call EnableLcd
   call ConfigureInterrupts
 GameLoop:
+  call ReadInput
   call ExploreState_Update
   call WaitForNextVerticalBlankViaInterrupt
   call ExploreState_Draw
@@ -79,6 +91,10 @@ ExploreState_Update:
   ld a, [unit.ctrl_lo]
   ld l, a
   CallHlFunctionPointer
+  ld a, h
+  and a
+  ret z
+  CallHlFunctionPointer
   ret
 
 ExploreState_Draw:
@@ -86,9 +102,53 @@ ExploreState_Draw:
   ret
 
 PlayerController:
+  ld a, [input]
+  ld b, a
+  and BTN_LEFT
+  jr nz, .left
+  ld a, b
+  and BTN_RIGHT
+  jr nz, .right
+  ld a, b
+  and BTN_UP
+  jr nz, .up
+  ld a, b
+  and BTN_DOWN
+  jr nz, .down
+  ret
+  .left
+    ld hl, MoveLeft
+    ret
+  .right
+    ld hl, MoveRight
+    ret
+  .up
+    ld hl, MoveUp
+    ret
+  .down
+    ld hl, MoveDown
+    ret
+
+; todo: make commands indexable
+MoveLeft:
+  ld a, [unit.sx]
+  dec a
+  ld [unit.sx], a
+  ret
+MoveRight:
   ld a, [unit.sx]
   inc a
   ld [unit.sx], a
+  ret
+MoveUp:
+  ld a, [unit.sy]
+  dec a
+  ld [unit.sy], a
+  ret
+MoveDown:
+  ld a, [unit.sy]
+  inc a
+  ld [unit.sy], a
   ret
 
 SECTION "Functions", ROM0
@@ -243,6 +303,30 @@ CheckForGbc:
     ld a, 0
     ld [isGbc], a
     ret
+
+ReadInput:
+  ld a, [input]
+  ld [previousInput], a
+  ld a, P1F_GET_DPAD
+  ld [rP1], a
+  ld a, [rP1]
+  ld a, [rP1]
+  ld a, [rP1]
+  ld a, [rP1]
+  and a, %1111
+  swap a
+  ld b, a
+  ld a, P1F_GET_BTN
+  ld [rP1], a
+  ld a, [rP1]
+  ld a, [rP1]
+  ld a, [rP1]
+  ld a, [rP1]
+  and a, %1111
+  or a, b
+  cpl
+  ld [input], a
+  ret
 
 InitialisePlayer:
   ld a, 80
