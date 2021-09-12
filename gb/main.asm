@@ -13,6 +13,10 @@ SECTION "Entrypoint", ROM0[$0100]
 SECTION "Gameboy Colour Support", ROM0[$0143]
   DB CART_COMPATIBLE_DMG_GBC
 
+SECTION "Vertical blank handler", ROM0[$0040]
+  call VerticalBlankHandler
+  reti
+
 SECTION "Graphics data", ROM0
 TileData:
 INCBIN "gen/tiles.2bpp"
@@ -31,47 +35,104 @@ INCBIN "gen/tiles.pal"
 EndTileColourPaletteData:
 
 SECTION "Variables", WRAM0
-isGbc:: db
+isGbc: db
+verticalBlankFlag: db
+unit:
+  .sx db
+  .sy db
+  .ctrl_hi db
+  .ctrl_lo db
+
+SPR0_Y EQU _OAMRAM
+SPR0_X EQU _OAMRAM+1
+SPR0_ID EQU _OAMRAM+2
+
+CallHlFunctionPointer: MACRO
+  ld bc, @ + 5
+  push bc
+  jp hl
+ENDM
 
 SECTION "Game code", ROM0[$0150]
 Startup:
+  di
   call CheckForGbc
   call WaitForNextVerticalBlank
   call DisableLcd
   call ClearGraphicsData
   call LoadGfx
   call InitialiseRoom
-  call InitialiseSprite
   call InitialiseMonochromePalettes
   call InitialiseColourPalettes
+  call InitialisePlayer
   call EnableLcd
+  call ConfigureInterrupts
 GameLoop:
-  halt
+  call ExploreState_Update
+  call WaitForNextVerticalBlankViaInterrupt
+  call ExploreState_Draw
+  jr GameLoop
+
+ExploreState_Update:
+  ld a, [unit.ctrl_hi]
+  ld h, a
+  ld a, [unit.ctrl_lo]
+  ld l, a
+  CallHlFunctionPointer
+  ret
+
+ExploreState_Draw:
+  call DrawPlayer
+  ret
+
+PlayerController:
+  ld a, [unit.sx]
+  inc a
+  ld [unit.sx], a
+  ret
 
 SECTION "Functions", ROM0
-WaitForNextVerticalBlank::
-.untilVerticalBlank
-  ld a, [rLY]
-  cp 144
-jr nz, .untilVerticalBlank
-ret
+VerticalBlankHandler:
+  push af
+  ld a, 1
+  ld [verticalBlankFlag], a
+  pop af
+  ret
+
+; Waits for the START of a new vblank period to ensure maximum time is available.
+WaitForNextVerticalBlankViaInterrupt:
+  .untilVerticalBlank
+    halt
+    ld a, [verticalBlankFlag]
+    or a
+    jr z, .untilVerticalBlank
+  ld a, 0
+  ld [verticalBlankFlag], a
+  ret
+
+WaitForNextVerticalBlank:
+  .untilVerticalBlank
+    ld a, [rLY]
+    cp 144
+  jr nz, .untilVerticalBlank
+  ret
 
 ; hl = destination address
 ; bc = no. bytes to zero
-ZeroMemory::
-.untilAllBytesAreZeroed
-  ld [hl], $00
-  inc hl
-  dec bc
-  ld a, b
-  or c
-jr nz, .untilAllBytesAreZeroed
-ret
+ZeroMemory:
+  .untilAllBytesAreZeroed
+    ld [hl], $00
+    inc hl
+    dec bc
+    ld a, b
+    or c
+  jr nz, .untilAllBytesAreZeroed
+  ret
 
 ; hl = destination address
 ; de = source address
 ; bc = no. bytes to copy
-CopyMemory::
+CopyMemory:
   .untilAllDataIsCopied
     ld a, [de]
     ld [hli], a
@@ -82,18 +143,24 @@ CopyMemory::
   jr nz, .untilAllDataIsCopied
   ret
 
-DisableLcd::
+DisableLcd:
   ld a, [rLCDC]
   xor LCDCF_ON
   ld [rLCDC], a
   ret
 
-EnableLcd::
+EnableLcd:
   ld a, LCDCF_ON|LCDCF_BG8000|LCDCF_BG9800|LCDCF_BGON|LCDCF_OBJ8|LCDCF_OBJON
   ld [rLCDC], a
   ret
 
-ClearGraphicsData::
+ConfigureInterrupts:
+  ld a, IEF_VBLANK
+  ld [rIE], a
+  ei
+  ret
+
+ClearGraphicsData:
   ; Tile memory
   ld hl, _VRAM
   ld bc, $800
@@ -119,7 +186,7 @@ LoadGfx::
   call CopyMemory
   ret
 
-InitialiseRoom::
+InitialiseRoom:
 ROW = 0
 ; the room width does not match the gameboy's tilemap width
 ; so we can't just copy it over wholesale
@@ -132,15 +199,6 @@ ROW = ROW + 1
 ENDR
   ret
 
-InitialiseSprite::
-  ld a, 80
-  ld [_OAMRAM], a
-  ld a, 80
-  ld [_OAMRAM+1], a
-  ld a, 3
-  ld [_OAMRAM+2], a
-  ret
-
 InitialiseMonochromePalettes:
   ld a, %11100100
   ld [rOBP0], a
@@ -148,7 +206,7 @@ InitialiseMonochromePalettes:
   ld [rBGP], a
   ret
 
-InitialiseColourPalettes::
+InitialiseColourPalettes:
   ; only do this on actual GBC hardware
   ld a, [isGbc]
   cp 1
@@ -174,7 +232,7 @@ ENDR
   ret
 
 ; only works when run IMMEDIATELY on startup
-CheckForGbc::
+CheckForGbc:
   cp $11
   jr nz, .isNotGbc
   .isGbc
@@ -185,3 +243,24 @@ CheckForGbc::
     ld a, 0
     ld [isGbc], a
     ret
+
+InitialisePlayer:
+  ld a, 80
+  ld [unit.sx], a
+  ld a, 80
+  ld [unit.sy], a
+  ld bc, PlayerController
+  ld a, b
+  ld [unit.ctrl_hi], a
+  ld a, c
+  ld [unit.ctrl_lo], a
+  ret
+
+DrawPlayer:
+  ld a, [unit.sx]
+  ld [SPR0_X], a
+  ld a, [unit.sy]
+  ld [SPR0_Y], a
+  ld a, 3
+  ld [SPR0_ID], a
+  ret
