@@ -1,6 +1,6 @@
 # Lua Code Walkthrough
 
-As I go through each stage of building out the game, I think it would be interesting to discuss the state of the code, and so this end today I will give a quick walkthrough of how the Lua code for the PICO-8 version looks so far. It's easily the simplest implementation, so it makes a good starting point. At the time of writing, all you can do is move a character around the screen, so there is also not too much code to discuss so far.
+As I go through each stage of building out the game, I think it would be interesting to discuss the state of the code, and so this end today I will give a quick walkthrough of how the Lua code for the [PICO-8](https://www.lexaloffle.com/pico-8.php) version looks so far. It's easily the simplest implementation, so it makes a good starting point. At the time of writing, all you can do is move a character around the screen, so there is also not too much code to discuss so far.
 
 ![](images/lua-walkthrough-01/movement.gif)
 
@@ -56,7 +56,7 @@ These contain the basic setup for the game's data as well as the core update/dra
 
 The `draw_game` function, taking the current 'global state' `gs` which I expect to contain all of the core game data, is very simple - just draws the current map data and player sprite to the screen using PICO-8's inbuilt functions.
 
-The `update_game` implementation utilises a very basic command pattern that should prove useful when I add enemies into the mix later on. Each unit on the map - currently, only the player - is designated a controller via the `getcmd` property which can be used to figure out what that unit should do next. For the player, this will be determined by player input (shown later), and for enemies some kind of AI. Commands may operate over the span of multiple frames, so rather than running the command only once, we continue to execute it once per frame, and once it is done, we will pick up a new one. In this way, we can cycle through units on the map letting them act in a turn-based manner (even though there is only the player right now).
+The `update_game` implementation utilises a very basic [command pattern](https://en.wikipedia.org/wiki/Command_pattern) that should prove useful when I add enemies into the mix later on. Each unit on the map - currently, only the player - is designated a controller via the `getcmd` property which can be used to figure out what that unit should do next. For the player, this will be determined by player input (shown later), and for enemies some kind of AI. Commands may operate over the span of multiple frames, so rather than running the command only once, we continue to execute it once per frame, and once it is done, we will pick up a new one. In this way, we can cycle through units on the map letting them act in a turn-based manner (even though there is only the player right now).
 
 One thing you will probably notice is that the code is as brief as possible, with unclear names used in some cases. This is mainly due to the constrained screen size when coding in PICO-8, for which I opt to keep variable names small where feasible. Since I intend to keep this version of the code quite simple into the future, hopefully it will not become too much of a readability issue later on.
 
