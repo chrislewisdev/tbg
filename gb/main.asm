@@ -86,11 +86,19 @@ GameLoop:
   jr GameLoop
 
 ExploreState_Update:
+  call GetCmdForUnit
+  call ExecuteCmdIfPresentInHl
+  ret
+
+GetCmdForUnit:
   ld a, [unit.ctrl_hi]
   ld h, a
   ld a, [unit.ctrl_lo]
   ld l, a
   CallHlFunctionPointer
+  ret
+
+ExecuteCmdIfPresentInHl:
   ld a, h
   and a
   ret z
@@ -115,6 +123,7 @@ PlayerController:
   ld a, b
   and BTN_DOWN
   jr nz, .down
+  ld hl, $0000
   ret
   .left
     ld hl, MoveLeft
