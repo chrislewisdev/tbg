@@ -23,6 +23,12 @@ build/:
 gen/:
 	mkdir gen
 
+run-gb: build/tbg.gb
+	bgb64 -set SystemMode=0 -watch build/tbg.gb
+
+run-gbc: build/tbg.gb
+	bgb64 -set SystemMode=1 -watch build/tbg.gb
+
 clean:
 	rm -rf build
 	rm -rf gen

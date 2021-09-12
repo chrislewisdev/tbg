@@ -1,1 +1,0 @@
-bgb64 -set SystemMode=0 -watch build/tbg.gb
