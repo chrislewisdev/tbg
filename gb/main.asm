@@ -139,25 +139,26 @@ PlayerController:
     ret
 
 ; todo: make commands indexable
+MoveCmd: MACRO
+REPT 8
+  ld a, [\2]
+  \1 a
+  ld [\2], a
+  call WaitForNextVerticalBlankViaInterrupt
+  call DrawPlayer
+ENDR
+ENDM
 MoveLeft:
-  ld a, [unit.sx]
-  dec a
-  ld [unit.sx], a
+  MoveCmd dec, unit.sx
   ret
 MoveRight:
-  ld a, [unit.sx]
-  inc a
-  ld [unit.sx], a
+  MoveCmd inc, unit.sx
   ret
 MoveUp:
-  ld a, [unit.sy]
-  dec a
-  ld [unit.sy], a
+  MoveCmd dec, unit.sy
   ret
 MoveDown:
-  ld a, [unit.sy]
-  inc a
-  ld [unit.sy], a
+  MoveCmd inc, unit.sy
   ret
 
 SECTION "Functions", ROM0
@@ -338,9 +339,11 @@ ReadInput:
   ret
 
 InitialisePlayer:
-  ld a, 80
+  ld a, 4
+  ld [unit.x], a
+  ld [unit.y], a
+  ld a, 4 * 8
   ld [unit.sx], a
-  ld a, 80
   ld [unit.sy], a
   ld bc, PlayerController
   ld a, b
