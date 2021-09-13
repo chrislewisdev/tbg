@@ -40,6 +40,8 @@ verticalBlankFlag: db
 input: db
 previousInput: db
 unit:
+  .x db
+  .y db
   .sx db
   .sy db
   .ctrl_hi db
@@ -141,24 +143,30 @@ PlayerController:
 ; todo: make commands indexable
 MoveCmd: MACRO
 REPT 8
+  ld a, [\2 + 2]
+  \1 a
+  ld [\2 + 2], a
+  call WaitForNextVerticalBlankViaInterrupt
+  call DrawPlayer
+ENDR
   ld a, [\2]
   \1 a
   ld [\2], a
   call WaitForNextVerticalBlankViaInterrupt
-  call DrawPlayer
-ENDR
+  call WaitForNextVerticalBlankViaInterrupt
+  call WaitForNextVerticalBlankViaInterrupt
 ENDM
 MoveLeft:
-  MoveCmd dec, unit.sx
+  MoveCmd dec, unit.x
   ret
 MoveRight:
-  MoveCmd inc, unit.sx
+  MoveCmd inc, unit.x
   ret
 MoveUp:
-  MoveCmd dec, unit.sy
+  MoveCmd dec, unit.y
   ret
 MoveDown:
-  MoveCmd inc, unit.sy
+  MoveCmd inc, unit.y
   ret
 
 SECTION "Functions", ROM0
