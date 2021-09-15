@@ -34,12 +34,17 @@ TileColourPaletteData:
 INCBIN "gen/tiles.pal"
 EndTileColourPaletteData:
 
+; todo: consider how to maintain these values
+MapWidth EQU 20
+MapHeight EQU 18
+
 SECTION "Variables", WRAM0
 isGbc: db
 verticalBlankFlag: db
 input: db
 previousInput: db
 unit:
+  ; if the distance between x/sx or y/sy changes, update MoveCmd
   .x db
   .y db
   .sx db
@@ -112,6 +117,7 @@ ExploreState_Draw:
   ret
 
 PlayerController:
+  ld hl, 0
   ld a, [input]
   ld b, a
   and BTN_LEFT
@@ -125,18 +131,50 @@ PlayerController:
   ld a, b
   and BTN_DOWN
   jr nz, .down
-  ld hl, $0000
   ret
   .left
+    ld a, [unit.x]
+    dec a
+    ld b, a
+    ld a, [unit.y]
+    ld c, a
+    call IsEmpty
+    ld hl, 0
+    ret nz
     ld hl, MoveLeft
     ret
   .right
+    ld a, [unit.x]
+    inc a
+    ld b, a
+    ld a, [unit.y]
+    ld c, a
+    call IsEmpty
+    ld hl, 0
+    ret nz
     ld hl, MoveRight
     ret
   .up
+    ld a, [unit.x]
+    dec a
+    ld b, a
+    ld a, [unit.y]
+    dec a
+    ld c, a
+    call IsEmpty
+    ld hl, 0
+    ret nz
     ld hl, MoveUp
     ret
   .down
+    ld a, [unit.x]
+    ld b, a
+    ld a, [unit.y]
+    inc a
+    ld c, a
+    call IsEmpty
+    ld hl, 0
+    ret nz
     ld hl, MoveDown
     ret
 
@@ -152,9 +190,9 @@ ENDR
   ld a, [\2]
   \1 a
   ld [\2], a
+REPT 4
   call WaitForNextVerticalBlankViaInterrupt
-  call WaitForNextVerticalBlankViaInterrupt
-  call WaitForNextVerticalBlankViaInterrupt
+ENDR
 ENDM
 MoveLeft:
   MoveCmd dec, unit.x
@@ -347,8 +385,9 @@ ReadInput:
   ret
 
 InitialisePlayer:
-  ld a, 4
+  ld a, 3
   ld [unit.x], a
+  ld a, 2
   ld [unit.y], a
   ld a, 4 * 8
   ld [unit.sx], a
@@ -367,4 +406,30 @@ DrawPlayer:
   ld [SPR0_Y], a
   ld a, 3
   ld [SPR0_ID], a
+  ret
+
+; b = cell x value
+; c = cell y value
+; output = z set if empty
+IsEmpty:
+  ld hl, MapData
+  ; hl += b
+  ld a, l
+  add b
+  ld l, a
+  ld a, h
+  adc 0
+  ld h, a
+  ; hl += c * MapWidth
+  ld de, MapWidth
+.countdownC
+  ld a, c
+  and a
+  jr z, .endCountdown
+  dec c
+  add hl, de
+.endCountdown
+  ; check [hl] == 1
+  ld a, [hl]
+  cp 1
   ret
