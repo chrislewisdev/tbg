@@ -156,7 +156,6 @@ PlayerController:
     ret
   .up
     ld a, [unit.x]
-    dec a
     ld b, a
     ld a, [unit.y]
     dec a
@@ -428,8 +427,9 @@ IsEmpty:
   jr z, .endCountdown
   dec c
   add hl, de
+  jr .countdownC
 .endCountdown
-  ; check [hl] == 1
+  ; check [hl] == 2
   ld a, [hl]
-  cp 1
+  cp 2
   ret
