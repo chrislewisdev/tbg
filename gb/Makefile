@@ -17,7 +17,7 @@ gen/sprite.pal: gen/ assets/sprite-palette.png
 gen/tiles.2bpp: gen/map.png
 	rgbgfx -u -t gen/map.tilemap -o gen/tiles.2bpp gen/map.png
 
-gen/map.png: gen/
+gen/map.png: gen/ assets/map.tmx
 	tmxrasterizer assets/map.tmx gen/map.png
 
 gen/tiles.pal: gen/ assets/tiles-palette.png
