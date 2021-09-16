@@ -25,7 +25,7 @@ SpriteData:
 INCBIN "gen/sprite.2bpp"
 EndSpriteData:
 MapData:
-INCBIN "gen/room.tilemap"
+INCBIN "gen/map.tilemap"
 EndMapData:
 SpritesColourPaletteData:
 INCBIN "gen/sprite.pal"

@@ -1,21 +1,29 @@
-# todo: try to make this more cross-platform friendly
+
+### CORE ###
 
 build/tbg.gb: build/ main.asm gen/sprite.2bpp gen/sprite.pal gen/tiles.2bpp gen/tiles.pal
 	rgbasm -o build/main.o main.asm
 	rgblink -n build/tbg.sym -o build/tbg.gb build/main.o
 	rgbfix -p0 -v build/tbg.gb
 
-gen/sprite.2bpp: gen/ sprite.png
-	rgbgfx -o gen/sprite.2bpp sprite.png
+### ASSETS ###
 
-gen/sprite.pal: gen/ sprite-palette.png
-	rgbgfx -p gen/sprite.pal sprite-palette.png
+gen/sprite.2bpp: gen/ assets/sprite.png
+	rgbgfx -o gen/sprite.2bpp assets/sprite.png
 
-gen/tiles.2bpp: gen/ room.png
-	rgbgfx -u -t gen/room.tilemap -o gen/tiles.2bpp room.png
+gen/sprite.pal: gen/ assets/sprite-palette.png
+	rgbgfx -p gen/sprite.pal assets/sprite-palette.png
 
-gen/tiles.pal: gen/ tiles-palette.png
-	rgbgfx -p gen/tiles.pal tiles-palette.png
+gen/tiles.2bpp: gen/map.png
+	rgbgfx -u -t gen/map.tilemap -o gen/tiles.2bpp gen/map.png
+
+gen/map.png: gen/
+	tmxrasterizer assets/map.tmx gen/map.png
+
+gen/tiles.pal: gen/ assets/tiles-palette.png
+	rgbgfx -p gen/tiles.pal assets/tiles-palette.png
+
+### MISC ###
 
 build/:
 	mkdir build
