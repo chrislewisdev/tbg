@@ -9,3 +9,4 @@ If you want an introduction to what this is all about, it's probably best to jus
 - 01/09/2021 [Welcome to the blog](blog/2021-09-01-welcome.md)
 - 09/09/2021 [Lua Code Walkthrough](blog/2021-09-09-lua-walkthrough.md)
 - 15/09/2021 [Basic Movement Complete](blog/2021-09-15-movement-complete.md)
+- 19/09/2021 [Rust Code Walkthrough](blog/2021-09-19-rust-walkthrough.md)
