@@ -263,7 +263,7 @@ I'd like to note that while my type definition for a Command here is simply an a
 ```rust
 trait Cmd {
   fn action(&self, &mut Unit);
-  fn is_done(&self);
+  fn is_done(&self) -> bool;
 }
 ```
 
