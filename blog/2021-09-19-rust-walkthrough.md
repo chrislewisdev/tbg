@@ -23,42 +23,42 @@ const WINDOW_WIDTH: i32 = SCREEN_WIDTH_CELLS * TILE_SIZE * SCALE_FACTOR;
 const WINDOW_HEIGHT: i32 = SCREEN_HEIGHT_CELLS * TILE_SIZE * SCALE_FACTOR;
 
 fn main() {
-    let (mut rl, thread) = raylib::init()
-        .size(WINDOW_WIDTH, WINDOW_HEIGHT)
-        .title("tbg")
-        .build();
+  let (mut rl, thread) = raylib::init()
+    .size(WINDOW_WIDTH, WINDOW_HEIGHT)
+    .title("tbg")
+    .build();
 
-    rl.set_target_fps(60);
+  rl.set_target_fps(60);
 
-    let sprite = rl.load_texture(&thread, "assets/sprite.png").expect("Failed to load sprite.png");
-    let tileset = rl.load_texture(&thread, "assets/tileset.png").expect("Failed to load tileset.png");
-    let resources = Resources { player_sprite: sprite, tileset };
+  let sprite = rl.load_texture(&thread, "assets/sprite.png").expect("Failed to load sprite.png");
+  let tileset = rl.load_texture(&thread, "assets/tileset.png").expect("Failed to load tileset.png");
+  let resources = Resources { player_sprite: sprite, tileset };
 
-    let map = load_map();
+  let map = load_map();
 
-    let mut global_state = GlobalState {
-        player: Unit {
-            cell: Point { x: 3, y: 3 },
-            pixel: Point { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
-            get_cmd: player_control
-        },
-        map
+  let mut global_state = GlobalState {
+    player: Unit {
+      cell: Point { x: 3, y: 3 },
+      pixel: Point { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
+      get_cmd: player_control
+    },
+    map
+  };
+
+  let mut explore_state = ExploreState { cmd: None };
+
+  while !rl.window_should_close() {
+    let input_state = InputState {
+      is_left_pressed: rl.is_key_pressed(KeyboardKey::KEY_LEFT),
+      is_right_pressed: rl.is_key_pressed(KeyboardKey::KEY_RIGHT),
+      is_up_pressed: rl.is_key_pressed(KeyboardKey::KEY_UP),
+      is_down_pressed: rl.is_key_pressed(KeyboardKey::KEY_DOWN),
     };
 
-    let mut explore_state = ExploreState { cmd: None };
-
-    while !rl.window_should_close() {
-        let input_state = InputState {
-            is_left_pressed: rl.is_key_pressed(KeyboardKey::KEY_LEFT),
-            is_right_pressed: rl.is_key_pressed(KeyboardKey::KEY_RIGHT),
-            is_up_pressed: rl.is_key_pressed(KeyboardKey::KEY_UP),
-            is_down_pressed: rl.is_key_pressed(KeyboardKey::KEY_DOWN),
-        };
-
-        explore_state.update(&mut global_state, &input_state);
-        let mut screen = rl.begin_drawing(&thread);
-        explore_state.draw(&mut screen, &resources, &global_state);
-    }
+    explore_state.update(&mut global_state, &input_state);
+    let mut screen = rl.begin_drawing(&thread);
+    explore_state.draw(&mut screen, &resources, &global_state);
+  }
 }
 ```
 
@@ -70,36 +70,36 @@ Anyway, the meat of the game of course is in the `update` and `draw` methods use
 
 ```rust
 trait ProgramState {
-    fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState);
-    fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState);
+  fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState);
+  fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState);
 }
 
 struct ExploreState {
-    cmd: Option<Cmd>,
+  cmd: Option<Cmd>,
 }
 
 impl ProgramState for ExploreState {
-    fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState) {
-        if self.cmd.is_none() {
-            let get_cmd = global_state.player.get_cmd;
-            self.cmd = get_cmd(&global_state.player, input_state, global_state);
-        }
-
-        if let Some(cmd) = self.cmd {
-            if cmd(&mut global_state.player) {
-                self.cmd = None
-            }
-        }
+  fn update(&mut self, global_state: &mut GlobalState, input_state: &InputState) {
+    if self.cmd.is_none() {
+      let get_cmd = global_state.player.get_cmd;
+      self.cmd = get_cmd(&global_state.player, input_state, global_state);
     }
-    
-    fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState) {
-        screen.clear_background(Color::BLACK);
-        draw_map(screen, &global_state.map, &resources.tileset);
 
-        let x = global_state.player.pixel.x * SCALE_FACTOR;
-        let y = global_state.player.pixel.y * SCALE_FACTOR;
-        screen.draw_texture_ex(&resources.player_sprite, rvec2(x, y), 0.0, SCALE_FACTOR as f32, Color::WHITE);
+    if let Some(cmd) = self.cmd {
+      if cmd(&mut global_state.player) {
+        self.cmd = None
+      }
     }
+  }
+  
+  fn draw(&self, screen: &mut RaylibDrawHandle, resources: &Resources, global_state: &GlobalState) {
+    screen.clear_background(Color::BLACK);
+    draw_map(screen, &global_state.map, &resources.tileset);
+
+    let x = global_state.player.pixel.x * SCALE_FACTOR;
+    let y = global_state.player.pixel.y * SCALE_FACTOR;
+    screen.draw_texture_ex(&resources.player_sprite, rvec2(x, y), 0.0, SCALE_FACTOR as f32, Color::WHITE);
+  }
 }
 ```
 
@@ -115,19 +115,19 @@ So far, things are pretty similar to the Lua implementation, just considerably m
 type Cmd = fn (&mut Unit) -> bool;
 
 fn move_cmd(unit: &mut Unit, delta: Point) -> bool {
-    let target_pixel = (unit.cell + delta) * TILE_SIZE;
-    let move_pixels = Point {
-        x: i32::signum(target_pixel.x - unit.pixel.x) * 2,
-        y: i32::signum(target_pixel.y - unit.pixel.y) * 2,
-    };
-    
-    unit.pixel = unit.pixel + move_pixels;
-    if unit.pixel == target_pixel {
-        unit.cell = unit.cell + delta;
-        return true;
-    }
+  let target_pixel = (unit.cell + delta) * TILE_SIZE;
+  let move_pixels = Point {
+    x: i32::signum(target_pixel.x - unit.pixel.x) * 2,
+    y: i32::signum(target_pixel.y - unit.pixel.y) * 2,
+  };
+  
+  unit.pixel = unit.pixel + move_pixels;
+  if unit.pixel == target_pixel {
+    unit.cell = unit.cell + delta;
+    return true;
+  }
 
-    return false;
+  return false;
 }
 fn move_left_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::LEFT) }
 fn move_right_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::RIGHT) }
@@ -135,21 +135,21 @@ fn move_up_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::UP) }
 fn move_down_cmd(unit: &mut Unit) -> bool { move_cmd(unit, point::DOWN) }
 
 fn is_empty(map: &MapData, x: i32, y: i32) -> bool {
-    return map[y as usize][x as usize] == 1;
+  return map[y as usize][x as usize] == 1;
 }
 
 fn player_control(unit: &Unit, input_state: &InputState, global_state: &GlobalState) -> Option<Cmd> {
-    if input_state.is_left_pressed && is_empty(&global_state.map, unit.cell.x - 1, unit.cell.y) {
-        return Some(move_left_cmd);
-    } else if input_state.is_right_pressed && is_empty(&global_state.map, unit.cell.x + 1, unit.cell.y){
-        return Some(move_right_cmd);
-    } else if input_state.is_up_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y - 1) {
-        return Some(move_up_cmd);
-    } else if input_state.is_down_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y + 1) {
-        return Some(move_down_cmd);
-    }
+  if input_state.is_left_pressed && is_empty(&global_state.map, unit.cell.x - 1, unit.cell.y) {
+    return Some(move_left_cmd);
+  } else if input_state.is_right_pressed && is_empty(&global_state.map, unit.cell.x + 1, unit.cell.y){
+    return Some(move_right_cmd);
+  } else if input_state.is_up_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y - 1) {
+    return Some(move_up_cmd);
+  } else if input_state.is_down_pressed && is_empty(&global_state.map, unit.cell.x, unit.cell.y + 1) {
+    return Some(move_down_cmd);
+  }
 
-    return None;
+  return None;
 }
 ```
 
@@ -160,8 +160,8 @@ use std::ops;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Point {
-    pub x: i32,
-    pub y: i32,
+  pub x: i32,
+  pub y: i32,
 }
 
 pub const UP: Point = Point { x: 0, y: -1 };
@@ -170,27 +170,27 @@ pub const LEFT: Point = Point { x: -1, y: 0 };
 pub const RIGHT: Point = Point { x: 1, y: 0 };
 
 impl ops::Add<Point> for Point {
-    type Output = Point;
+  type Output = Point;
 
-    fn add(self, rhs: Point) -> Point {
-        Point { x: self.x + rhs.x, y: self.y + rhs.y }
-    }
+  fn add(self, rhs: Point) -> Point {
+    Point { x: self.x + rhs.x, y: self.y + rhs.y }
+  }
 }
 
 impl ops::Sub<Point> for Point {
-    type Output = Point;
+  type Output = Point;
 
-    fn sub(self, rhs: Point) -> Point {
-        Point { x: self.x - rhs.x, y: self.y - rhs.y }
-    }
+  fn sub(self, rhs: Point) -> Point {
+    Point { x: self.x - rhs.x, y: self.y - rhs.y }
+  }
 }
 
 impl ops::Mul<i32> for Point {
-    type Output = Point;
+  type Output = Point;
 
-    fn mul(self, rhs: i32) -> Point {
-        Point { x: self.x * rhs, y: self.y * rhs }
-    }
+  fn mul(self, rhs: i32) -> Point {
+    Point { x: self.x * rhs, y: self.y * rhs }
+  }
 }
 
 ```
@@ -205,48 +205,48 @@ As I've mentioned before, one of the key differences between this implementation
 type MapData = Vec<Vec<i32>>;
 
 fn load_map() -> MapData {
-    let mut output: MapData = vec![];
-    let csv = fs::read_to_string("assets/map.csv").expect("Failed to load map.csv");
-    let mut reader = csv::ReaderBuilder::new().has_headers(false).from_reader(csv.as_bytes());
+  let mut output: MapData = vec![];
+  let csv = fs::read_to_string("assets/map.csv").expect("Failed to load map.csv");
+  let mut reader = csv::ReaderBuilder::new().has_headers(false).from_reader(csv.as_bytes());
 
-    for result in reader.records() {
-        let row = result.unwrap();
-        output.push(row.iter().map(|s| s.parse::<i32>().unwrap()).collect());
-    }
+  for result in reader.records() {
+    let row = result.unwrap();
+    output.push(row.iter().map(|s| s.parse::<i32>().unwrap()).collect());
+  }
 
-    return output;
+  return output;
 }
 
 fn get_tile_rect(tileset: &Texture2D, index: i32) -> Rectangle {
-    let tiles_width = tileset.width / TILE_SIZE;
-    let x = index % tiles_width;
-    let y = index / tiles_width;
+  let tiles_width = tileset.width / TILE_SIZE;
+  let x = index % tiles_width;
+  let y = index / tiles_width;
 
-    rrect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+  rrect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 }
 
 fn draw_tile(screen: &mut RaylibDrawHandle, tileset: &Texture2D, tile: i32, x: i32, y: i32) {
-    screen.draw_texture_pro(
-        tileset,
-        get_tile_rect(&tileset, tile),
-        rrect(x * TILE_SIZE * SCALE_FACTOR, y * TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR),
-        rvec2(0, 0),
-        0.0,
-        Color::WHITE
-    );
+  screen.draw_texture_pro(
+    tileset,
+    get_tile_rect(&tileset, tile),
+    rrect(x * TILE_SIZE * SCALE_FACTOR, y * TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR, TILE_SIZE * SCALE_FACTOR),
+    rvec2(0, 0),
+    0.0,
+    Color::WHITE
+  );
 }
 
 fn draw_map(screen: &mut RaylibDrawHandle, map: &MapData, tileset: &Texture2D) {
-    let mut y = 0;
+  let mut y = 0;
 
-    for row in map {
-        let mut x = 0;
-        for tile in row {
-            draw_tile(screen, tileset, *tile, x, y);
-            x += 1;
-        }
-        y += 1;
+  for row in map {
+    let mut x = 0;
+    for tile in row {
+      draw_tile(screen, tileset, *tile, x, y);
+      x += 1;
     }
+    y += 1;
+  }
 }
 ```
 
@@ -255,6 +255,23 @@ The tilemap data is represented as a 2D array of tile indices, each denoting whi
 The `draw_map` function, naturally, loops through all the x/y grid co-ordinates represented by the tilemap and draws each one to screen. Rather than drawing a single texture to screen though, the tile we need to draw is only one part of the larger tileset image, so we use `get_tile_rect` to calculate what area of the tileset needs to be drawn according to the ID of the tile. Then `draw_tile` wraps up the myriad arguments we need to pass to raylib in order to draw that one tile to exactly where we want it.
 
 I have a feeling that this `draw_map` implementation might not be terribly efficient, since we are making a lot of separate draw calls, when it could be better to first pre-render the tilemap out to its own texture and then draw that in a single call (so the entire tilemap does not need to be re-calculated each frame). However, without an in-depth knowledge of how raylib's draw functions work, and without a large enough tilemap for performance to matter right now, I will simply accept that I don't know any better right now and that I can revisit it only if necessary later on.
+
+## Regarding traits
+
+I'd like to note that while my type definition for a Command here is simply an alias for a function pointer (`type Cmd = fn (&mut Unit) -> bool;`) I initially attempted to make it a little more flexible using Rust's traits system. This looked something like this:
+
+```rust
+trait Cmd {
+  fn action(&self, &mut Unit);
+  fn is_done(&self);
+}
+```
+
+In doing so I hoped that I could decouple the performing of the command from the *checking* of whether or not it was completed, and make the intent of the design a little clearer. In a language such as C# where this would be declared as an interface, this would be a common and easy way to pass around commands that all share that interface. In Rust, however, while this does allow us to write the code in a slightly more generic manner, the matter is made a bit more complex by the language's strict rules around types and memory allocation.
+
+By opting for a trait rather than a simple function pointer, I would need to mark most functions that accept `Cmd` as an argument with `dyn Cmd` instead, and when instantiating a command, I would need to return it via a `Box` rather than an outright value so that the memory allocation for it is always constant. Although in practice I think these need not be too much of a barrier, it started to get a bit too complex for my novice Rust skills to cleanly manage the usage of traits in this generic fashion, and for very little benefit might I add. So, I opted to return to passing around straight-up function pointers instead.
+
+*(I'll also note that I messed around with using closures rather than function pointers, but since function pointers and closures in Rust cannot quite be used interchangeably, this too started to boggle me. But I definitely learned some useful info about the intricacies of Rust in the process)*
 
 ## Conclusion
 
